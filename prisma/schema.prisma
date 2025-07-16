@@ -10,6 +10,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Usuario{
+  id Int  @id @default(autoincrement())
+  email String @unique
+  userName String
+  password String //hasheada no se guardara la contraseña como texto  
+  createAt DateTime @default(now())
+  moviminetos Movimiento[]
+
+}
 
 model Movimiento{
   id  Int @id @default(autoincrement())
@@ -17,5 +26,8 @@ model Movimiento{
   monto Float
   tipo String
   fecha DateTime @default(now())
+
+  usuarioId Int?
+  usuario Usuario? @relation(fields: [usuarioId], references: [id]) //relacion con usiario 
 
 }

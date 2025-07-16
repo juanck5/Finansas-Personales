@@ -4,8 +4,7 @@
 import { Request, Response } from "express"; //importa el request y response de express
 import { dbConnection } from "../config/db";
 import { z } from "zod";
-import ca from "zod/v4/locales/ca.cjs";
-import tr from "zod/v4/locales/tr.cjs";
+
 
 const movimientoSchema = z.object({
     descripcion: z.string(),
@@ -200,6 +199,74 @@ console.log("trae todos los movimientos", req);
         catch (error) {
             res.status(400).json({message: "Error al obtener el resumen", error});
         }
+    },
+
+    //Resumen año //////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    resumenAnual: async (req:Request, res:Response) => {
+        const nombresMeses = [                             //crea un array con los nombres de los meses se usa para manddar ek nombre del mes y no el numero del mes
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ];
+
+
+    try{
+        const {anio} = req.params; //obtiene el anio
+        const year = parseInt(anio); //obtiene el anio
+
+        if(isNaN(year)){
+            return res.status(400).json({message: "Año inválido"});
+        }
+
+        const resultados = []; //crea un array donde se guardaran los resultados
+
+
+        for (let mes = 0; mes < 12; mes++) {  //para cada mes
+            const inicioMes = new Date(year, mes, 1); //obtiene la fecha de inicio setoma el primer dia del mes
+            const finMes = new Date(year, mes + 1, 1); //obtiene la fecha de fin se roma el primer dia del mes siguiente
+
+            const ingresos = await dbConnection.movimiento.aggregate({  //obtiene el ingreso
+                _sum: {  //suma el monto
+                    monto: true 
+                },
+                where: { //obtiene los movimientos de ingreso
+                    tipo: "Ingreso",
+                    fecha: {
+                        gte: inicioMes,
+                        lt: finMes
+                    }
+                }
+
+            })
+
+            const egresos = await dbConnection.movimiento.aggregate({  //obtiene el egreso
+                _sum: {  //suma el monto
+                    monto: true 
+                },
+                where: { //obtiene los movimientos de egreso
+                    tipo: "Egreso",
+                    fecha: {
+                        gte: inicioMes,
+                        lt: finMes
+                    }
+                }
+
+            })
+
+            resultados.push({
+                mes: nombresMeses[mes], //responde con el mes
+                ingreso: ingresos._sum.monto || 0, //responde con el ingreso
+                egresos: egresos._sum.monto || 0,//responde con el egreso
+                balance: (ingresos._sum.monto || 0 )- (egresos._sum.monto || 0), //responde con el balance
+            })
+        }
+    }catch(error){
+        res.status(400).json({message: "Error al obtener el resumen", error});
+    }
+
+
+
+
     }
 
 
